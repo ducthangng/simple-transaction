@@ -2,7 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"f/rdbm"
+	"f/repository/rdbm"
 	"f/usecase"
 	"fmt"
 	"log"
@@ -23,13 +23,24 @@ func main() {
 		log.Fatalf("failed with error: %v", err)
 	}
 
-	querier := rdbm.Queries{DB: db}
-	store := rdbm.TxStore{Queries: &querier, DB: db}
-	service := usecase.NewService(&store)
+	sdt := BuildTx(db, true)
 
-	err = service.DeleteBookOfClass(5)
-	if err != nil {
-		log.Fatalf("failed with error: %v", err)
+	queries := rdbm.Queries{DB: sdt}
+	bookService := usecase.NewBookService(&queries)
+
+	_ = bookService.CheckTransaction(6)
+}
+
+// Flag true returns the Tx
+func BuildTx(db *sql.DB, Flag bool) rdbm.DBTX {
+	if Flag {
+		tx, err := db.Begin()
+		if err != nil {
+			return nil
+		}
+		return &rdbm.SqlConnTx{DB: tx}
+	} else {
+		return &rdbm.SqlDBTx{DB: db}
 	}
 }
 
